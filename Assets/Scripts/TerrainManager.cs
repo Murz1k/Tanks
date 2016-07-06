@@ -6,43 +6,24 @@ using System.IO;
 
 public class TerrainManager : MonoBehaviour
 {
-    #region Variables
     public Transform Sand;
     public Transform Tree;
     public Transform Stone;
     public Transform Pool;
     public Transform Bush;
     private Vector2 nextPosition;
-    internal static int Height = 10, Widht = 16;
-    private string[] data = null;
+    Tank tank;
+    int Height = 10;
+    int Widht = 16;
     private static Transform[,] transforms = null;
     private float bushDelay = 5f;
-    private static string levelPath;
-    #endregion
     void Start()
     {
-        data = new string[Height * Widht];
+        tank = FindObjectOfType<Tank>();
         transforms = new Transform[Widht + 2, Height + 2];
-        nextPosition = new Vector2(0.5f,0.5f);
-        levelPath = Menu.loadedLevelPath;
-        if (File.Exists(levelPath))
-        {
-            data = File.ReadAllLines(levelPath);
-            if(data.Length!=0)
-            {
-                CreateLevel(data);
-            }
-            else { 
-                print("Пустой файл.");
-                CreateAll();
-                RandomObjects();
-            }
-        }
-        else
-        {
-            CreateAll();
-            RandomObjects();
-        }
+        nextPosition = new Vector2(0.5f, 0.5f);
+        CreateAll();
+        RandomObjects();
         StartCoroutine(GenerateBush(bushDelay));
     }
     /// <summary>
@@ -58,6 +39,7 @@ public class TerrainManager : MonoBehaviour
                 trans.name = "Sand";
                 trans.localPosition = nextPosition;
                 nextPosition.x += trans.localScale.x - 0.6f;
+                trans.parent = gameObject.transform;
                 transforms[j, i] = trans;
             }
             nextPosition.y += 1.6f - 0.6f;
@@ -70,11 +52,11 @@ public class TerrainManager : MonoBehaviour
     /// </summary>
     void RandomObjects()
     {
-        int count1 = 0;
-        for (int r = 0; r < 50 + count1; r++)
+        int count = 0;
+        for (int r = 0; r < 50 + count; r++)
         {
-            int randomY = Random.Range(1, Height+1);
-            int randomX = Random.Range(1, Widht+1);
+            int randomY = Random.Range(1, Height + 1);
+            int randomX = Random.Range(1, Widht + 1);
             Transform trans = transforms[randomX, randomY];
             if (trans.name == "Sand")
             {
@@ -103,45 +85,9 @@ public class TerrainManager : MonoBehaviour
             }
             else
             {
-                count1++;
+                count++;
             }
         }
-    }
-    /// <summary>
-    /// Сохраняем уровень в файл.
-    /// </summary>
-    /// <param name="name"></param>
-    internal static void SaveAll(string name)
-    {
-        string[] array = new string[(Height + 2) * (Widht + 2)];
-        int index = 0;
-        int intervalX = 0;
-        int intervalY = 0;
-        for (int i = 0; i < Height + 2; i++)
-        {
-            for (int j = 0; j < Widht + 2; j++)
-            {
-                Transform trans = transforms[j, i];
-                int x = (int)trans.position.x;
-                int y = (int)trans.position.y;
-                if(i==0 && j==0)
-                {
-                    if(x!=0)
-                    {
-                        intervalX = x;
-                    }
-                    if(y!=0)
-                    {
-                        intervalY = y;
-                    }
-                }
-                x -= intervalX;
-                y -= intervalY;
-                array[index++] = trans.name + " " + x + 'x' + y;
-            }
-        }
-        print("Уровень сохранен!");
-        File.WriteAllLines(name, array);
     }
     /// <summary>
     /// Проверяем наличие кустов вокруг.
@@ -149,89 +95,58 @@ public class TerrainManager : MonoBehaviour
     /// <returns></returns>
     Transform GetLonelySand()
     {
-        Dictionary<Transform, int> sands = new Dictionary<Transform, int>();
-        for(int i = 2;i<Height+1;i++)
+        Dictionary<Transform, decimal> lonelySandsDictionary = new Dictionary<Transform, decimal>();
+        for (int i = 2; i < Height + 1; i++)
         {
-            for(int j = 2;j<Widht+1;j++)
+            for (int j = 2; j < Widht + 1; j++)
             {
-                Transform trans = transforms[j, i];
-                if(trans.name=="Sand")
+                Transform cellTransform = transforms[j, i];
+                if (cellTransform.name == "Sand")
                 {
-                    int count = 8;
+                    int bushCount = 8;
 
-                    if(transforms[j+1,i].name!="Bush")
+                    if (transforms[j + 1, i].name != "Sand")
                     {
-                        count--;
+                        bushCount--;
                     }
-                    if (transforms[j-1, i].name != "Bush")
+                    if (transforms[j - 1, i].name != "Sand")
                     {
-                        count--;
+                        bushCount--;
                     }
-                    if (transforms[j, i+1].name != "Bush")
+                    if (transforms[j, i + 1].name != "Sand")
                     {
-                        count--;
+                        bushCount--;
                     }
-                    if (transforms[j, i-1].name != "Bush")
+                    if (transforms[j, i - 1].name != "Sand")
                     {
-                        count--;
+                        bushCount--;
                     }
-                    if (transforms[j+1, i+1].name != "Bush")
+                    if (transforms[j + 1, i + 1].name != "Sand")
                     {
-                        count--;
+                        bushCount--;
                     }
-                    if (transforms[j-1, i-1].name != "Bush")
+                    if (transforms[j - 1, i - 1].name != "Sand")
                     {
-                        count--;
+                        bushCount--;
                     }
-                    if (transforms[j+1, i-1].name != "Bush")
+                    if (transforms[j + 1, i - 1].name != "Sand")
                     {
-                        count--;
+                        bushCount--;
                     }
-                    if (transforms[j-1, i+1].name != "Bush")
+                    if (transforms[j - 1, i + 1].name != "Sand")
                     {
-                        count--;
+                        bushCount--;
                     }
-                    sands.Add(trans, count);
+                    lonelySandsDictionary.Add(cellTransform, bushCount);
                 }
             }
         }
-        //Sort
-        var myList = sands.ToList();
-        myList.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
-        print(myList[0].Key.position.x + " " + myList[0].Key.position.y);
-        return myList[0].Key;
-    }
-    /// <summary>
-    /// Создаем уровень по указанным данным.
-    /// </summary>
-    /// <param name="data">Загруженный массив строк.</param>
-    void CreateLevel(string[] data)
-    {
-        for (int i = 0; i < (Height + 2) * (Widht + 2); i++)
-        {
-            string obj = data[i];
-            string name = obj.Split(' ')[0];
-            string position = obj.Split(' ')[1];
-            int x = int.Parse(position.Split('x')[0]);
-            int y = int.Parse(position.Split('x')[1]);
-            Transform trans = Sand;
-            switch (name)
-            {
-                case "Tree": trans = Tree; break;
-                case "Bush": trans = Bush; break;
-                case "Stone": trans = Stone; break;
-                case "Pool": trans = Pool; break;
-                case "Sand": trans = Sand; break;
-            }
-            Transform newTrans = (Transform)Instantiate(trans);
-            newTrans.name = name;
-            newTrans.transform.position = new Vector2(x + 0.5f, y + 0.5f);
-            transforms[x, y] = newTrans;
-        }
+        var veryLonelySand = lonelySandsDictionary.Aggregate((l, r) => l.Value >= r.Value ? l : r).Key;
+        return veryLonelySand;
     }
     void Update()
     {
-       MoveTerrain();
+        MoveTerrain();
     }
     /// <summary>
     /// Создаем куст в случайном месте через указанное время.
@@ -240,6 +155,7 @@ public class TerrainManager : MonoBehaviour
     /// <returns></returns>
     private IEnumerator GenerateBush(float delay)
     {
+        yield return new WaitForSeconds(delay);
         while (true)
         {
             int randomY = Random.Range(1, Height);
@@ -251,13 +167,10 @@ public class TerrainManager : MonoBehaviour
                 trans.GetComponent<SpriteRenderer>().sprite = Bush.GetComponent<SpriteRenderer>().sprite;
                 trans.name = "Bush";
                 print("Bush is created.");
-                yield return new WaitForSeconds(delay);
-            }
-            else
-            {
-                continue;
+                break;
             }
         }
+        StartCoroutine(GenerateBush(bushDelay));
     }
     /// <summary>
     /// Создаем определенное количество разных объектов на новых блоках.
@@ -267,7 +180,7 @@ public class TerrainManager : MonoBehaviour
     {
         //Узнаем, сколько новых объектов нужно создать
         int countObjects = 0;
-        if(route=="Top")
+        if (route == "Top")
         {
             for (int i = 1; i < Widht + 1; i++)
             {
@@ -282,14 +195,14 @@ public class TerrainManager : MonoBehaviour
         {
             for (int i = 1; i < Widht + 1; i++)
             {
-                Transform o = transforms[i, Height+1];
+                Transform o = transforms[i, Height + 1];
                 if (o.name != "Sand")
                 {
                     countObjects++;
                 }
             }
         }
-        else if (route=="Right")
+        else if (route == "Right")
         {
             for (int i = 1; i < Height + 1; i++)
             {
@@ -304,7 +217,7 @@ public class TerrainManager : MonoBehaviour
         {
             for (int i = 1; i < Height + 1; i++)
             {
-                Transform o = transforms[Widht+1, i];
+                Transform o = transforms[Widht + 1, i];
                 if (o.name != "Sand")
                 {
                     countObjects++;
@@ -320,7 +233,7 @@ public class TerrainManager : MonoBehaviour
             if (route == "Top")
             {
                 random = Random.Range(1, Widht);
-                    trans = transforms[random, Height+1];
+                trans = transforms[random, Height + 1];
             }
             else if (route == "Bot")
             {
@@ -373,9 +286,14 @@ public class TerrainManager : MonoBehaviour
     /// </summary>
     void MoveTerrain()
     {
-        if (transforms[9, 6].position.x < Tank.tankPositionX)//right
+        Vector2 directionMove = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+        foreach(var cell in transforms)
         {
-            nextPosition = transforms[Widht + 1, 0].position;
+            cell.Translate(-directionMove*0.2f);
+        }
+        if (transforms[9, 6].position.x < tank.transform.position.x)//right
+        {
+            nextPosition = transforms[Widht + 1, 0].localPosition;
             nextPosition.x++;
             for (int i = 0; i < Height + 2; i++)
             {
@@ -393,9 +311,9 @@ public class TerrainManager : MonoBehaviour
             }
             CreateRandom("Right");
         }
-        else if (transforms[8, 6].position.x > Tank.tankPositionX)//left
+        else if (transforms[8, 6].position.x > tank.transform.position.x)//left
         {
-            nextPosition = transforms[0, 0].position;
+            nextPosition = transforms[0, 0].localPosition;
             nextPosition.x--;
             for (int i = 0; i < Height + 2; i++)
             {
@@ -412,9 +330,9 @@ public class TerrainManager : MonoBehaviour
             }
             CreateRandom("Left");
         }
-        else if (transforms[9,6].position.y < Tank.tankPositionY)//up
+        else if (transforms[9, 6].position.y < tank.transform.position.y)//up
         {
-            nextPosition = transforms[0, Height + 1].position;
+            nextPosition = transforms[0, Height + 1].localPosition;
             nextPosition.y++;
             for (int i = 0; i < Widht + 2; i++)
             {
@@ -429,17 +347,17 @@ public class TerrainManager : MonoBehaviour
                 }
                 transforms[i, Height + 1] = trans;
             }
-           CreateRandom("Top");
+            CreateRandom("Top");
         }
-        else if (transforms[9, 5].position.y > Tank.tankPositionY)//down
+        else if (transforms[9, 5].position.y > tank.transform.position.y)//down
         {
-            nextPosition = transforms[0, 0].position;
+            nextPosition = transforms[0, 0].localPosition;
             nextPosition.y--;
             for (int i = 0; i < Widht + 2; i++)
             {
                 Transform trans = transforms[i, Height + 1];
                 trans.localPosition = nextPosition;
-                nextPosition.x++ ;
+                nextPosition.x++;
                 trans.GetComponent<SpriteRenderer>().sprite = Sand.GetComponent<SpriteRenderer>().sprite;
                 trans.GetComponent<SpriteRenderer>().sortingLayerName = "Ground"; trans.name = "Sand";
                 for (int j = Height + 1; j > 0; j--)
